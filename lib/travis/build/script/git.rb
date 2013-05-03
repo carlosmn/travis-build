@@ -10,9 +10,10 @@ module Travis
 
         def checkout
           install_source_key
-          clone
+          init_repo
           ch_dir
-          fetch_ref if fetch_ref?
+          setup_remote
+          fetch_ref
           git_checkout
           submodules if submodules?
           rm_key
@@ -35,9 +36,12 @@ module Travis
             cmd 'echo -e "Host github.com\n\tBatchMode yes\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config', echo: false, log: false
           end
 
-          def clone
-            set 'GIT_ASKPASS', 'echo', :echo => false # this makes git interactive auth fail
-            cmd "git clone #{clone_args} #{data.source_url} #{dir}", assert: true, timeout: :git_clone, fold: "git.#{next_git_fold_number}"
+          def init_repo
+            cmd "git init #{dir}", assert: true
+          end
+
+          def setup_remote
+            cmd "git remote add origin #{data.source_url}"
           end
 
           def ch_dir
@@ -48,16 +52,14 @@ module Travis
             raw 'rm -f ~/.ssh/source_rsa'
           end
 
-          def fetch_ref?
-            !!data.ref
-          end
-
           def fetch_ref
-            cmd "git fetch origin +#{data.ref}: ", assert: true, timeout: :git_fetch_ref, fold: "git.#{next_git_fold_number}"
+             set 'GIT_ASKPASS', 'echo', :echo => false # this makes git interactive auth fail
+           ref = data.ref ? data.ref : data.commit
+            cmd "git fetch --depth=#{config[:git][:depth]} origin +#{ref}:", assert: true, timeout: :git_fetch_ref, fold: "git.#{next_git_fold_number}"
           end
 
           def git_checkout
-            cmd "git checkout -qf #{data.pull_request ? 'FETCH_HEAD' : data.commit}", assert: true, fold: "git.#{next_git_fold_number}"
+            cmd "git checkout -qf FETCH_HEAD", assert: true, fold: "git.#{next_git_fold_number}"
           end
 
           def submodules?
