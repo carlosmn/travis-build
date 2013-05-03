@@ -41,7 +41,8 @@ module Travis
           end
 
           def setup_remote
-            cmd "git remote add origin #{data.source_url}"
+            # Don't set up the refspec as we won't be needing it
+            cmd "git config remote.origin.url #{data.source_url}"
           end
 
           def ch_dir
@@ -54,8 +55,8 @@ module Travis
 
           def fetch_ref
              set 'GIT_ASKPASS', 'echo', :echo => false # this makes git interactive auth fail
-           ref = data.ref ? data.ref : data.commit
-            cmd "git fetch --depth=#{config[:git][:depth]} origin +#{ref}:", assert: true, timeout: :git_fetch_ref, fold: "git.#{next_git_fold_number}"
+            ref = data.ref ? "#{data.ref}:" : ""
+            cmd "git fetch --depth=#{config[:git][:depth]} origin #{ref}:", assert: true, timeout: :git_fetch_ref, fold: "git.#{next_git_fold_number}"
           end
 
           def git_checkout
